@@ -11,11 +11,84 @@ def get_base_can_id():
             print("Invalid input. Please enter a valid hex (0x...) or decimal number.")
 
 def get_commands():
-    """Prompt user to enter commands and their byte values."""
-    commands = {}
-    print("\nEnter commands (name and byte value). Type 'done' when finished.")
-    print("Format: CommandName 0xBB (or decimal byte value)")
+    """Prompt user to enter commands and their byte values.
     
+    Supports three input modes:
+    1. Interactive single-entry mode (one at a time)
+    2. Paste mode with multiple lines (one command per line)
+    3. Comma-separated entries (all on one line)
+    """
+    commands = {}
+    print("\nEnter commands (name and byte value). Options:")
+    print("  • Single entry: CommandName 0xBB (type 'done' when finished)")
+    print("  • Bulk paste: Paste multiple lines (one command per line), then type 'done'")
+    print("  • Comma-separated: Command1 0x64, Command2 0x92, Command3 0x80")
+    
+    first_input = input("\nEnter command(s): ").strip()
+    
+    # Check if user entered comma-separated values (single line with commas)
+    if ',' in first_input:
+        entries = [e.strip() for e in first_input.split(',')]
+        for entry in entries:
+            if entry.lower() == 'done':
+                continue
+            parsed = _parse_command_entry(entry, commands)
+            if parsed:
+                commands[parsed[0]] = parsed[1]
+        return commands if commands else _interactive_command_entry(commands)
+    
+    # Check if first input is a valid command or if user started bulk mode
+    parsed = _parse_command_entry(first_input, commands)
+    if parsed:
+        commands[parsed[0]] = parsed[1]
+        # Continue in interactive mode
+        return _interactive_command_entry(commands)
+    elif first_input.lower() == 'done':
+        if commands:
+            return commands
+        print("Please add at least one command.")
+        return get_commands()
+    else:
+        # Invalid format, assume bulk paste mode
+        print("(Bulk paste mode - enter one command per line, type 'done' when finished)")
+        _parse_bulk_commands(first_input, commands)
+        return _bulk_command_entry(commands)
+
+def _parse_command_entry(entry, existing_commands):
+    """Parse a single command entry and return (name, byte) tuple or None."""
+    if not entry or entry.lower() == 'done':
+        return None
+    
+    parts = entry.rsplit(maxsplit=1)
+    if len(parts) != 2:
+        print(f"Invalid format: '{entry}'. Use: CommandName 0xBB")
+        return None
+    
+    command_name, command_byte_str = parts
+    
+    # Check for duplicate names
+    if command_name in existing_commands:
+        print(f"Duplicate command name: '{command_name}' (skipped)")
+        return None
+    
+    try:
+        if command_byte_str.lower().startswith('0x'):
+            command_byte = int(command_byte_str, 16)
+        else:
+            command_byte = int(command_byte_str, 10)
+        
+        if 0 <= command_byte <= 0xFF:
+            print(f"Added: {command_name} = 0x{command_byte:02X}")
+            return (command_name, command_byte)
+        else:
+            print(f"Command byte out of range: 0x{command_byte:02X} (must be 0x00–0xFF)")
+            return None
+    except ValueError:
+        print(f"Invalid command byte in '{entry}'. Use hex (0xBB) or decimal.")
+        return None
+
+def _interactive_command_entry(commands):
+    """Continue in interactive single-entry mode."""
     while True:
         user_input = input("Enter command (or 'done'): ").strip()
         if user_input.lower() == 'done':
@@ -25,25 +98,41 @@ def get_commands():
                 print("Please add at least one command.")
                 continue
         
-        parts = user_input.rsplit(maxsplit=1)
-        if len(parts) != 2:
-            print("Invalid format. Use: CommandName 0xBB")
+        parsed = _parse_command_entry(user_input, commands)
+        if parsed:
+            commands[parsed[0]] = parsed[1]
+    
+    return commands
+
+def _parse_bulk_commands(line, commands):
+    """Parse a single line of bulk input (may be one or comma-separated commands)."""
+    # Check if line contains commas (comma-separated format)
+    if ',' in line:
+        entries = [e.strip() for e in line.split(',')]
+    else:
+        entries = [line]
+    
+    for entry in entries:
+        if entry.lower() == 'done':
             continue
+        parsed = _parse_command_entry(entry, commands)
+        if parsed:
+            commands[parsed[0]] = parsed[1]
+
+def _bulk_command_entry(commands):
+    """Continue in bulk paste mode (multiple lines)."""
+    print("(Paste commands, one per line. Type 'done' to finish.)")
+    while True:
+        user_input = input("").strip()
+        if user_input.lower() == 'done':
+            if commands:
+                break
+            else:
+                print("Please add at least one command.")
+                continue
         
-        command_name, command_byte_str = parts
-        try:
-            if command_byte_str.lower().startswith('0x'):
-                command_byte = int(command_byte_str, 16)
-            else:
-                command_byte = int(command_byte_str, 10)
-            
-            if 0 <= command_byte <= 0xFF:
-                commands[command_name] = command_byte
-                print(f"Added: {command_name} = 0x{command_byte:02X}")
-            else:
-                print(f"Command byte must be 0x00–0xFF (got 0x{command_byte:02X})")
-        except ValueError:
-            print("Invalid command byte. Please enter hex (0xBB) or decimal.")
+        if user_input:
+            _parse_bulk_commands(user_input, commands)
     
     return commands
 

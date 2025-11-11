@@ -19,9 +19,10 @@ python canDev.py
 ### Workflow
 
 1. **Enter Base CAN ID**: Provide the base identifier in hex (e.g., `0x160`) or decimal (e.g., `352`)
-2. **Add Commands**: Enter command names and their byte values (hex or decimal)
-   - Format: `CommandName 0xBB` (or `CommandName 100` for decimal)
-   - Type `done` when finished
+2. **Add Commands**: Enter commands in any of three modes:
+   - **Single-entry mode**: One command at a time, type `done` when finished
+   - **Bulk paste mode**: Paste multiple lines (one command per line), type `done` when finished
+   - **Comma-separated mode**: Paste all commands on one line, separated by commas (no need for `done`)
 3. **Choose Output Format**: Select how to display CAN IDs:
    - **1. Hexadecimal** (0x...) — compact, human-readable hex format
    - **2. Binary** (0b...) — full 29-bit binary representation
@@ -34,17 +35,18 @@ python canDev.py
 Enter base CAN ID (hex with '0x' prefix or decimal): 0x160
 Base CAN ID set to: 0x160
 
-Enter commands (name and byte value). Type 'done' when finished.
-Format: CommandName 0xBB (or decimal byte value)
-Enter command (or 'done'): SetZero 0x64
-Added: SetZero = 0x64
-Enter command (or 'done'): ReadAngle 0x92
-Added: ReadAngle = 0x92
-Enter command (or 'done'): Shutdown 0x80
-Added: Shutdown = 0x80
-Enter command (or 'done'): done
+Enter commands (name and byte value). Options:
+  • Single entry: CommandName 0xBB (type 'done' when finished)
+  • Bulk paste: Paste multiple lines (one command per line), then type 'done'
+  • Comma-separated: Command1 0x64, Command2 0x92, Command3 0x80
 
-Loaded 3 command(s).
+Enter command(s): SetZero 0x64, ReadAngle 0x92, Shutdown 0x80, Stop 0x81
+Added: SetZero = 0x64
+Added: ReadAngle = 0x92
+Added: Shutdown = 0x80
+Added: Stop = 0x81
+
+Loaded 4 command(s).
 
 Choose output format:
   1. Hexadecimal (0x...)
@@ -55,21 +57,37 @@ Output format: HEX
 
 Command                                            M1        M2        M3        M4        M5        M6        M7        M8
 ---------------------------------------------------------------------------------------
-SetZero                                            0x016164 0x016264 0x016364 0x016464 0x016564 0x016664 0x016764 0x016864
-ReadAngle                                          0x016192 0x016292 0x016392 0x016492 0x016592 0x016692 0x016792 0x016892
-Shutdown                                           0x016180 0x016280 0x016380 0x016480 0x016580 0x016680 0x016780 0x016880
+SetZero                                            0x016164  0x016264  0x016364  0x016464  0x016564  0x016664  0x016764  0x016864
+ReadAngle                                          0x016192  0x016292  0x016392  0x016492  0x016592  0x016692  0x016792  0x016892
+Shutdown                                           0x016180  0x016280  0x016380  0x016480  0x016580  0x016680  0x016780  0x016880
+Stop                                               0x016181  0x016281  0x016381  0x016481  0x016581  0x016681  0x016781  0x016881
 ```
 
-### Binary Output Example
+### Bulk Input Examples
 
-If you choose option 2 (Binary), the output displays full 29-bit binary values:
-
+**Option 1: Comma-separated (single line)**
 ```
-Command                                            M1                          M2                          M3
--------------------------------------------------------------------------------------------------------------------
-SetZero                                            0b00000000000010110000101100100 0b00000000000010110001001100100 0b00000000000010110001101100100
-ReadAngle                                          0b00000000000010110000110010010 0b00000000000010110001010010010 0b00000000000010110001110010010
-Shutdown                                           0b00000000000010110000110000000 0b00000000000010110001010000000 0b00000000000010110001110000000
+Enter command(s): Command1 0x64, Command2 0x92, Command3 0x80
+```
+
+**Option 2: Multi-line paste**
+```
+Enter command(s): Command1 0x64
+(Bulk paste mode - enter one command per line, type 'done' when finished)
+
+Command2 0x92
+Command3 0x80
+Shutdown 0x80
+done
+```
+
+**Option 3: Single-entry mode**
+```
+Enter command(s): Command1 0x64
+Added: Command1 = 0x64
+Enter command (or 'done'): Command2 0x92
+Added: Command2 = 0x92
+Enter command (or 'done'): done
 ```
 
 ## How It Works
@@ -123,3 +141,5 @@ print_can_table(base_can_id, commands, num_motors=8, output_format='hex')
 - **Base CAN ID**: Accepts hex (`0x...`) or decimal values
 - **Command bytes**: Must be in range `0x00–0xFF` (0–255)
 - **Command names**: Any string (spaces are not supported in names; use single words)
+- **Duplicate detection**: Duplicate command names are automatically skipped with a warning
+- **Format flexibility**: Accepts hex (0xBB), decimal (100), and mixed formats in the same input
